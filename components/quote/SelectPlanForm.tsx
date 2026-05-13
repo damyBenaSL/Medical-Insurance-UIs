@@ -601,7 +601,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
             {standardPlans.map((plan) => (
               <td key={plan.id} className="p-3 text-center">
                 <div className="text-white">
-                  <span className="text-lg font-bold">${plan.premium.toLocaleString()}</span>
+                  <span className="text-lg font-bold">${calculatePremium(plan.id).toLocaleString()}</span>
                   <span className="text-xs text-white/70 block">/year</span>
                 </div>
               </td>
