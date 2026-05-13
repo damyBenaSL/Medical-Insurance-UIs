@@ -265,11 +265,11 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
     <>
       {data.map((row, idx) => (
         <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-          <td className="p-3 text-gray-700 sticky left-0 bg-white">{row.label}</td>
+          <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">{row.label}</td>
           {row.values.map((value, i) => (
             <td
               key={i}
-              className={`p-3 text-center ${selectedPlans.includes(standardPlans[i].id) ? "bg-red-50" : ""}`}
+              className={`p-3 text-center w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(standardPlans[i].id) ? "bg-red-50" : ""}`}
             >
               {value === "✓" ? (
                 <CheckOutlined className="text-green-500" />
@@ -287,11 +287,17 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
 
   const renderComparisonTable = () => (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-sm table-fixed">
+        <colgroup>
+          <col className="w-[200px] min-w-[200px]" />
+          {standardPlans.map((plan) => (
+            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+          ))}
+        </colgroup>
         <thead>
           {/* Merged Group Headers */}
           <tr className="border-b border-gray-200">
-            <th className="text-left p-3 bg-gray-50 font-semibold text-gray-700 min-w-[200px] sticky left-0" rowSpan={2}>
+            <th className="text-left p-3 bg-gray-50 font-semibold text-gray-700 sticky left-0" rowSpan={2}>
               Coverage Details
             </th>
             <th className="p-3 bg-gray-100 text-center font-bold text-gray-700" colSpan={2}>
@@ -310,7 +316,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
           {/* Sub Headers */}
           <tr className="border-b border-gray-200">
             {standardPlans.map((plan) => (
-              <th key={plan.id} className="p-3 bg-gray-50 min-w-[130px]">
+              <th key={plan.id} className="p-3 bg-gray-50">
                 <div className="flex flex-col items-center gap-1">
                   <span className="font-semibold" style={{ color: plan.color }}>
                     {plan.name}
@@ -387,7 +393,13 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "coverage",
                     label: renderCollapsibleHeader("Main Coverage"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>{renderTableRows(coverageData)}</tbody>
                       </table>
                     ),
@@ -396,7 +408,13 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "deductible",
                     label: renderCollapsibleHeader("Deductible and Co-payment"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>{renderTableRows(deductibleData)}</tbody>
                       </table>
                     ),
@@ -405,7 +423,13 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "inpatient",
                     label: renderCollapsibleHeader("Inpatient and Day-care Treatment", "(Pre-authorization required)"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>{renderTableRows(inpatientData)}</tbody>
                       </table>
                     ),
@@ -414,10 +438,16 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "optional",
                     label: renderCollapsibleHeader("Optional Benefits"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>
                           <tr className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 text-gray-700 sticky left-0 bg-white min-w-[200px]">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
                               <div className="flex items-center gap-3">
                                 <Switch
                                   size="small"
@@ -430,14 +460,14 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                             {standardPlans.map((plan, i) => (
                               <td
                                 key={i}
-                                className={`p-3 text-center text-gray-500 ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                                className={`p-3 text-center text-gray-500 w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
                               >
                                 {optionalBenefits.includes("maternity") ? "Included" : "Optional"}
                               </td>
                             ))}
                           </tr>
                           <tr className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 text-gray-700 sticky left-0 bg-white">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
                               <div className="flex items-center gap-3">
                                 <Switch
                                   size="small"
@@ -450,7 +480,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                             {standardPlans.map((plan, i) => (
                               <td
                                 key={i}
-                                className={`p-3 text-center text-gray-500 ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                                className={`p-3 text-center text-gray-500 w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
                               >
                                 {optionalBenefits.includes("dental") ? "Included" : "Optional"}
                               </td>
