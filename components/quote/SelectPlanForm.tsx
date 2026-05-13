@@ -18,6 +18,15 @@ export interface PlanData {
   optionalBenefits?: string[];
 }
 
+// Deductible options with premium multipliers
+const deductibleOptions = [
+  { value: "0", label: "$0", multiplier: 1.3 },
+  { value: "250", label: "$250", multiplier: 1.15 },
+  { value: "500", label: "$500", multiplier: 1.0 },
+  { value: "1000", label: "$1,000", multiplier: 0.85 },
+  { value: "2500", label: "$2,500", multiplier: 0.7 },
+];
+
 // Plan definitions with geographical options and premium values
 const standardPlans = [
   { 
@@ -26,7 +35,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#6b7280",
     group: "classic",
-    premium: 450,
+    basePremium: 450,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "sea", label: "SEA" },
       { value: "asia-pacific-plus", label: "Asia Pacific+" },
@@ -38,7 +48,8 @@ const standardPlans = [
     type: "IP & OP", 
     color: "#6b7280",
     group: "classic",
-    premium: 680,
+    basePremium: 680,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "sea", label: "SEA" },
       { value: "asia-pacific-plus", label: "Asia Pacific+" },
@@ -52,7 +63,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#3b82f6",
     group: "advance",
-    premium: 750,
+    basePremium: 750,
+    defaultDeductible: "250",
     geoOptions: [
       { value: "regional", label: "Regional" },
     ]
@@ -63,7 +75,8 @@ const standardPlans = [
     type: "IP & OP", 
     color: "#3b82f6",
     group: "advance",
-    premium: 1100,
+    basePremium: 1100,
+    defaultDeductible: "250",
     geoOptions: [
       { value: "regional", label: "Regional" },
       { value: "asia-pacific-plus", label: "Asia Pacific+" },
@@ -77,7 +90,8 @@ const standardPlans = [
     type: "IP & OP", 
     color: "#8b5cf6",
     group: "premier",
-    premium: 1850,
+    basePremium: 1850,
+    defaultDeductible: "0",
     geoOptions: [
       { value: "regional", label: "Regional" },
       { value: "asia-pacific", label: "Asia Pacific" },
@@ -92,7 +106,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#cd7f32",
     group: "metal",
-    premium: 320,
+    basePremium: 320,
+    defaultDeductible: "1000",
     geoOptions: [
       { value: "sea-ex-sg", label: "South East Asia excluding Singapore" },
     ]
@@ -103,7 +118,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#9ca3af",
     group: "metal",
-    premium: 520,
+    basePremium: 520,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "asia-europe-ex", label: "Asia & Europe excluding Singapore, Hong Kong, UK, Switzerland" },
     ]
@@ -114,7 +130,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#f59e0b",
     group: "metal",
-    premium: 890,
+    basePremium: 890,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "worldwide-ex-usa-canada", label: "Worldwide excluding USA and Canada" },
     ]
@@ -125,7 +142,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#6366f1",
     group: "metal",
-    premium: 1450,
+    basePremium: 1450,
+    defaultDeductible: "250",
     geoOptions: [
       { value: "worldwide", label: "Worldwide" },
     ]
@@ -178,6 +196,14 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [geographicalCoverage, setGeographicalCoverage] = useState<Record<string, string>>({});
+  const [selectedDeductibles, setSelectedDeductibles] = useState<Record<string, string>>(() => {
+    // Initialize with default deductibles for each plan
+    const defaults: Record<string, string> = {};
+    standardPlans.forEach(plan => {
+      defaults[plan.id] = plan.defaultDeductible;
+    });
+    return defaults;
+  });
   const [selectedCovers, setSelectedCovers] = useState<string[]>([]);
   const [optionalBenefits, setOptionalBenefits] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<string[]>(["coverage", "deductible", "inpatient", "optional"]);
@@ -185,6 +211,17 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
   const [cardSelectedPlans, setCardSelectedPlans] = useState<string[]>([]);
   const [cardSelectedRegions, setCardSelectedRegions] = useState<Record<string, string>>({});
   const [cardExtraCovers, setCardExtraCovers] = useState<Record<string, string[]>>({});
+  const [cardDeductibles, setCardDeductibles] = useState<Record<string, string>>({});
+
+  // Calculate premium based on deductible selection
+  const calculatePremium = (planId: string) => {
+    const plan = standardPlans.find(p => p.id === planId);
+    if (!plan) return 0;
+    const deductible = selectedDeductibles[planId] || plan.defaultDeductible;
+    const option = deductibleOptions.find(d => d.value === deductible);
+    const multiplier = option?.multiplier || 1.0;
+    return Math.round(plan.basePremium * multiplier);
+  };
 
   const handlePlanToggle = (planId: string, checked: boolean) => {
     if (checked) {
@@ -218,6 +255,14 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
     } else {
       setOptionalBenefits((prev) => prev.filter((b) => b !== benefit));
     }
+  };
+
+  const handleDeductibleChange = (planId: string, deductible: string) => {
+    setSelectedDeductibles((prev) => ({ ...prev, [planId]: deductible }));
+  };
+
+  const handleCardDeductibleChange = (planId: string, deductible: string) => {
+    setCardDeductibles((prev) => ({ ...prev, [planId]: deductible }));
   };
 
   // Handlers for vertical card view
@@ -334,7 +379,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
             {standardPlans.map((plan) => (
               <td key={plan.id} className="p-3 text-center">
                 <div className="text-white">
-                  <span className="text-lg font-bold">${plan.premium.toLocaleString()}</span>
+                  <span className="text-lg font-bold">${calculatePremium(plan.id).toLocaleString()}</span>
                   <span className="text-xs text-white/70 block">/year</span>
                 </div>
               </td>
@@ -415,7 +460,61 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                             <col key={plan.id} className="w-[130px] min-w-[130px]" />
                           ))}
                         </colgroup>
-                        <tbody>{renderTableRows(deductibleData)}</tbody>
+                        <tbody>
+                          {/* Individual Annual Deductible - Dropdown */}
+                          <tr className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
+                              Individual Annual Deductible
+                            </td>
+                            {standardPlans.map((plan) => (
+                              <td
+                                key={plan.id}
+                                className={`p-2 w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                              >
+                                <Select
+                                  size="small"
+                                  value={selectedDeductibles[plan.id] || plan.defaultDeductible}
+                                  onChange={(value) => handleDeductibleChange(plan.id, value)}
+                                  options={deductibleOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+                                  className="w-full"
+                                  popupMatchSelectWidth={false}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                          {/* Family Annual Deductible - calculated based on individual */}
+                          <tr className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
+                              Family Annual Deductible
+                            </td>
+                            {standardPlans.map((plan) => {
+                              const individualDeductible = parseInt(selectedDeductibles[plan.id] || plan.defaultDeductible);
+                              const familyDeductible = individualDeductible * 3;
+                              return (
+                                <td
+                                  key={plan.id}
+                                  className={`p-3 text-center w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                                >
+                                  ${familyDeductible.toLocaleString()}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {/* Policy Co-payment - static values */}
+                          <tr className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
+                              Policy Co-payment
+                            </td>
+                            {["20%", "20%", "10%", "10%", "0%", "30%", "25%", "20%", "10%"].map((value, i) => (
+                              <td
+                                key={i}
+                                className={`p-3 text-center w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(standardPlans[i].id) ? "bg-red-50" : ""}`}
+                              >
+                                {value}
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
                       </table>
                     ),
                   },
@@ -701,6 +800,8 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                 onRegionChange={handleCardRegionChange}
                 extraCoversState={cardExtraCovers}
                 onExtraCoverToggle={handleCardExtraCoverToggle}
+                selectedDeductibles={cardDeductibles}
+                onDeductibleChange={handleCardDeductibleChange}
               />
             )
           ) : (

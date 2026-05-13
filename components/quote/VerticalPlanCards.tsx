@@ -4,16 +4,25 @@ import React, { useState } from "react";
 import { Select, Checkbox, Collapse } from "antd";
 import { DownOutlined, CheckOutlined } from "@ant-design/icons";
 
+// Deductible options with premium multipliers
+const deductibleOptions = [
+  { value: "0", label: "$0", multiplier: 1.3 },
+  { value: "250", label: "$250", multiplier: 1.15 },
+  { value: "500", label: "$500", multiplier: 1.0 },
+  { value: "1000", label: "$1,000", multiplier: 0.85 },
+  { value: "2500", label: "$2,500", multiplier: 0.7 },
+];
+
 interface Plan {
   id: string;
   name: string;
   tagline: string;
   region: string;
   regionOptions: { value: string; label: string }[];
-  ipOnlyPrice: number | null;
-  ipOpPrice: number;
+  baseIpOnlyPrice: number | null;
+  baseIpOpPrice: number;
+  defaultDeductible: string;
   annualMax: string;
-  deductible: string;
   network: string;
   extraCovers: { id: string; label: string; included: boolean }[];
   hasExtraCovers: boolean;
@@ -26,6 +35,8 @@ interface VerticalPlanCardsProps {
   onRegionChange: (planId: string, region: string) => void;
   extraCoversState: Record<string, string[]>;
   onExtraCoverToggle: (planId: string, coverId: string, checked: boolean) => void;
+  selectedDeductibles: Record<string, string>;
+  onDeductibleChange: (planId: string, deductible: string) => void;
 }
 
 const plans: Plan[] = [
@@ -38,10 +49,10 @@ const plans: Plan[] = [
       { value: "network-only", label: "Network Only" },
       { value: "sea", label: "SEA Coverage" },
     ],
-    ipOnlyPrice: 450,
-    ipOpPrice: 620,
+    baseIpOnlyPrice: 450,
+    baseIpOpPrice: 620,
+    defaultDeductible: "500",
     annualMax: "$50,000",
-    deductible: "No Deductible",
     network: "Basic Network",
     extraCovers: [
       { id: "maternity", label: "Maternity Benefit", included: false },
@@ -59,10 +70,10 @@ const plans: Plan[] = [
       { value: "asia-pacific", label: "Asia Pacific" },
       { value: "worldwide", label: "Worldwide" },
     ],
-    ipOnlyPrice: 850,
-    ipOpPrice: 1100,
+    baseIpOnlyPrice: 850,
+    baseIpOpPrice: 1100,
+    defaultDeductible: "250",
     annualMax: "$150,000",
-    deductible: "$250",
     network: "Global Network",
     extraCovers: [
       { id: "maternity", label: "Maternity Benefit", included: true },
@@ -79,10 +90,10 @@ const plans: Plan[] = [
       { value: "asia-pacific", label: "Asia Pacific" },
       { value: "worldwide", label: "Worldwide" },
     ],
-    ipOnlyPrice: null,
-    ipOpPrice: 1850,
+    baseIpOnlyPrice: null,
+    baseIpOpPrice: 1850,
+    defaultDeductible: "0",
     annualMax: "$500,000",
-    deductible: "$0",
     network: "VIP World Network",
     extraCovers: [
       { id: "maternity", label: "Full Maternity", included: true },
@@ -99,10 +110,10 @@ const plans: Plan[] = [
       { value: "local", label: "Local Network" },
       { value: "regional", label: "Regional" },
     ],
-    ipOnlyPrice: 320,
-    ipOpPrice: 480,
+    baseIpOnlyPrice: 320,
+    baseIpOpPrice: 480,
+    defaultDeductible: "1000",
     annualMax: "$25,000",
-    deductible: "$1,000",
     network: "Restricted Network",
     extraCovers: [],
     hasExtraCovers: false,
@@ -172,6 +183,8 @@ export default function VerticalPlanCards({
   onRegionChange,
   extraCoversState,
   onExtraCoverToggle,
+  selectedDeductibles,
+  onDeductibleChange,
 }: VerticalPlanCardsProps) {
   const [expandedCards, setExpandedCards] = useState<string[]>([]);
 
@@ -181,6 +194,15 @@ export default function VerticalPlanCards({
         ? prev.filter((id) => id !== planId)
         : [...prev, planId]
     );
+  };
+
+  // Calculate premium based on deductible selection
+  const calculatePremium = (basePrice: number | null, planId: string, plan: Plan) => {
+    if (basePrice === null) return null;
+    const deductible = selectedDeductibles[planId] || plan.defaultDeductible;
+    const option = deductibleOptions.find(d => d.value === deductible);
+    const multiplier = option?.multiplier || 1.0;
+    return Math.round(basePrice * multiplier);
   };
 
   return (
@@ -223,14 +245,14 @@ export default function VerticalPlanCards({
             {/* Pricing */}
             <div className="px-5 pb-4">
               <div className="flex items-end gap-6">
-                {plan.ipOnlyPrice !== null ? (
+                {plan.baseIpOnlyPrice !== null ? (
                   <div className="flex-1">
                     <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                       IP Only
                     </span>
                     <div className="flex items-baseline gap-1 mt-1">
                       <span className="text-2xl font-bold text-[#c8102e]">
-                        ${plan.ipOnlyPrice.toLocaleString()}
+                        ${calculatePremium(plan.baseIpOnlyPrice, plan.id, plan)?.toLocaleString()}
                       </span>
                       <span className="text-xs text-gray-500">/year</span>
                     </div>
@@ -251,7 +273,7 @@ export default function VerticalPlanCards({
                   </span>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-2xl font-bold text-[#c8102e]">
-                      ${plan.ipOpPrice.toLocaleString()}
+                      ${calculatePremium(plan.baseIpOpPrice, plan.id, plan)?.toLocaleString()}
                     </span>
                     <span className="text-xs text-gray-500">/year</span>
                   </div>
@@ -266,9 +288,16 @@ export default function VerticalPlanCards({
                   <span className="text-gray-600">Annual Max</span>
                   <span className="font-semibold text-gray-900">{plan.annualMax}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Deductible</span>
-                  <span className="font-semibold text-gray-900">{plan.deductible}</span>
+                  <Select
+                    size="small"
+                    value={selectedDeductibles[plan.id] || plan.defaultDeductible}
+                    onChange={(value) => onDeductibleChange(plan.id, value)}
+                    options={deductibleOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+                    className="w-[100px]"
+                    popupMatchSelectWidth={false}
+                  />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Network</span>
