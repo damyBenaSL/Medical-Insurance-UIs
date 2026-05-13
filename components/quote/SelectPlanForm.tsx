@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { Select, Switch, Checkbox, Collapse } from "antd";
-import { SafetyCertificateOutlined, CheckOutlined, DownOutlined } from "@ant-design/icons";
+import { SafetyCertificateOutlined, CheckOutlined, DownOutlined, TableOutlined, AppstoreOutlined } from "@ant-design/icons";
+import VerticalPlanCards from "./VerticalPlanCards";
 
 interface SelectPlanFormProps {
   onContinue: (planData: PlanData) => void;
@@ -17,6 +18,15 @@ export interface PlanData {
   optionalBenefits?: string[];
 }
 
+// Deductible options with premium multipliers
+const deductibleOptions = [
+  { value: "0", label: "$0", multiplier: 1.3 },
+  { value: "250", label: "$250", multiplier: 1.15 },
+  { value: "500", label: "$500", multiplier: 1.0 },
+  { value: "1000", label: "$1,000", multiplier: 0.85 },
+  { value: "2500", label: "$2,500", multiplier: 0.7 },
+];
+
 // Plan definitions with geographical options and premium values
 const standardPlans = [
   { 
@@ -25,7 +35,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#6b7280",
     group: "classic",
-    premium: 450,
+    basePremium: 450,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "sea", label: "SEA" },
       { value: "asia-pacific-plus", label: "Asia Pacific+" },
@@ -37,7 +48,8 @@ const standardPlans = [
     type: "IP & OP", 
     color: "#6b7280",
     group: "classic",
-    premium: 680,
+    basePremium: 680,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "sea", label: "SEA" },
       { value: "asia-pacific-plus", label: "Asia Pacific+" },
@@ -51,7 +63,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#3b82f6",
     group: "advance",
-    premium: 750,
+    basePremium: 750,
+    defaultDeductible: "250",
     geoOptions: [
       { value: "regional", label: "Regional" },
     ]
@@ -62,7 +75,8 @@ const standardPlans = [
     type: "IP & OP", 
     color: "#3b82f6",
     group: "advance",
-    premium: 1100,
+    basePremium: 1100,
+    defaultDeductible: "250",
     geoOptions: [
       { value: "regional", label: "Regional" },
       { value: "asia-pacific-plus", label: "Asia Pacific+" },
@@ -76,7 +90,8 @@ const standardPlans = [
     type: "IP & OP", 
     color: "#8b5cf6",
     group: "premier",
-    premium: 1850,
+    basePremium: 1850,
+    defaultDeductible: "0",
     geoOptions: [
       { value: "regional", label: "Regional" },
       { value: "asia-pacific", label: "Asia Pacific" },
@@ -91,7 +106,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#cd7f32",
     group: "metal",
-    premium: 320,
+    basePremium: 320,
+    defaultDeductible: "1000",
     geoOptions: [
       { value: "sea-ex-sg", label: "South East Asia excluding Singapore" },
     ]
@@ -102,7 +118,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#9ca3af",
     group: "metal",
-    premium: 520,
+    basePremium: 520,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "asia-europe-ex", label: "Asia & Europe excluding Singapore, Hong Kong, UK, Switzerland" },
     ]
@@ -113,7 +130,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#f59e0b",
     group: "metal",
-    premium: 890,
+    basePremium: 890,
+    defaultDeductible: "500",
     geoOptions: [
       { value: "worldwide-ex-usa-canada", label: "Worldwide excluding USA and Canada" },
     ]
@@ -124,7 +142,8 @@ const standardPlans = [
     type: "IP Only", 
     color: "#6366f1",
     group: "metal",
-    premium: 1450,
+    basePremium: 1450,
+    defaultDeductible: "250",
     geoOptions: [
       { value: "worldwide", label: "Worldwide" },
     ]
@@ -174,11 +193,35 @@ const customizedCovers = [
 
 export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormProps) {
   const [planType, setPlanType] = useState<"standard" | "customized">("standard");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [geographicalCoverage, setGeographicalCoverage] = useState<Record<string, string>>({});
+  const [selectedDeductibles, setSelectedDeductibles] = useState<Record<string, string>>(() => {
+    // Initialize with default deductibles for each plan
+    const defaults: Record<string, string> = {};
+    standardPlans.forEach(plan => {
+      defaults[plan.id] = plan.defaultDeductible;
+    });
+    return defaults;
+  });
   const [selectedCovers, setSelectedCovers] = useState<string[]>([]);
   const [optionalBenefits, setOptionalBenefits] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<string[]>(["coverage", "deductible", "inpatient", "optional"]);
+  // State for vertical card view
+  const [cardSelectedPlans, setCardSelectedPlans] = useState<string[]>([]);
+  const [cardSelectedRegions, setCardSelectedRegions] = useState<Record<string, string>>({});
+  const [cardExtraCovers, setCardExtraCovers] = useState<Record<string, string[]>>({});
+  const [cardDeductibles, setCardDeductibles] = useState<Record<string, string>>({});
+
+  // Calculate premium based on deductible selection
+  const calculatePremium = (planId: string) => {
+    const plan = standardPlans.find(p => p.id === planId);
+    if (!plan) return 0;
+    const deductible = selectedDeductibles[planId] || plan.defaultDeductible;
+    const option = deductibleOptions.find(d => d.value === deductible);
+    const multiplier = option?.multiplier || 1.0;
+    return Math.round(plan.basePremium * multiplier);
+  };
 
   const handlePlanToggle = (planId: string, checked: boolean) => {
     if (checked) {
@@ -214,6 +257,38 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
     }
   };
 
+  const handleDeductibleChange = (planId: string, deductible: string) => {
+    setSelectedDeductibles((prev) => ({ ...prev, [planId]: deductible }));
+  };
+
+  const handleCardDeductibleChange = (planId: string, deductible: string) => {
+    setCardDeductibles((prev) => ({ ...prev, [planId]: deductible }));
+  };
+
+  // Handlers for vertical card view
+  const handleCardPlanToggle = (planId: string, checked: boolean) => {
+    if (checked) {
+      setCardSelectedPlans((prev) => [...prev, planId]);
+    } else {
+      setCardSelectedPlans((prev) => prev.filter((id) => id !== planId));
+    }
+  };
+
+  const handleCardRegionChange = (planId: string, region: string) => {
+    setCardSelectedRegions((prev) => ({ ...prev, [planId]: region }));
+  };
+
+  const handleCardExtraCoverToggle = (planId: string, coverId: string, checked: boolean) => {
+    setCardExtraCovers((prev) => {
+      const current = prev[planId] || [];
+      if (checked) {
+        return { ...prev, [planId]: [...current, coverId] };
+      } else {
+        return { ...prev, [planId]: current.filter((id) => id !== coverId) };
+      }
+    });
+  };
+
   const handleContinue = () => {
     onContinue({
       planType,
@@ -235,11 +310,11 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
     <>
       {data.map((row, idx) => (
         <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-          <td className="p-3 text-gray-700 sticky left-0 bg-white">{row.label}</td>
+          <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">{row.label}</td>
           {row.values.map((value, i) => (
             <td
               key={i}
-              className={`p-3 text-center ${selectedPlans.includes(standardPlans[i].id) ? "bg-red-50" : ""}`}
+              className={`p-3 text-center w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(standardPlans[i].id) ? "bg-red-50" : ""}`}
             >
               {value === "✓" ? (
                 <CheckOutlined className="text-green-500" />
@@ -257,11 +332,17 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
 
   const renderComparisonTable = () => (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-sm table-fixed">
+        <colgroup>
+          <col className="w-[200px] min-w-[200px]" />
+          {standardPlans.map((plan) => (
+            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+          ))}
+        </colgroup>
         <thead>
           {/* Merged Group Headers */}
           <tr className="border-b border-gray-200">
-            <th className="text-left p-3 bg-gray-50 font-semibold text-gray-700 min-w-[200px] sticky left-0" rowSpan={2}>
+            <th className="text-left p-3 bg-gray-50 font-semibold text-gray-700 sticky left-0" rowSpan={2}>
               Coverage Details
             </th>
             <th className="p-3 bg-gray-100 text-center font-bold text-gray-700" colSpan={2}>
@@ -280,7 +361,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
           {/* Sub Headers */}
           <tr className="border-b border-gray-200">
             {standardPlans.map((plan) => (
-              <th key={plan.id} className="p-3 bg-gray-50 min-w-[130px]">
+              <th key={plan.id} className="p-3 bg-gray-50">
                 <div className="flex flex-col items-center gap-1">
                   <span className="font-semibold" style={{ color: plan.color }}>
                     {plan.name}
@@ -298,7 +379,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
             {standardPlans.map((plan) => (
               <td key={plan.id} className="p-3 text-center">
                 <div className="text-white">
-                  <span className="text-lg font-bold">${plan.premium.toLocaleString()}</span>
+                  <span className="text-lg font-bold">${calculatePremium(plan.id).toLocaleString()}</span>
                   <span className="text-xs text-white/70 block">/year</span>
                 </div>
               </td>
@@ -357,7 +438,13 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "coverage",
                     label: renderCollapsibleHeader("Main Coverage"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>{renderTableRows(coverageData)}</tbody>
                       </table>
                     ),
@@ -366,8 +453,68 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "deductible",
                     label: renderCollapsibleHeader("Deductible and Co-payment"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
-                        <tbody>{renderTableRows(deductibleData)}</tbody>
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
+                        <tbody>
+                          {/* Individual Annual Deductible - Dropdown */}
+                          <tr className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
+                              Individual Annual Deductible
+                            </td>
+                            {standardPlans.map((plan) => (
+                              <td
+                                key={plan.id}
+                                className={`p-2 w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                              >
+                                <Select
+                                  size="small"
+                                  value={selectedDeductibles[plan.id] || plan.defaultDeductible}
+                                  onChange={(value) => handleDeductibleChange(plan.id, value)}
+                                  options={deductibleOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+                                  className="w-full"
+                                  popupMatchSelectWidth={false}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                          {/* Family Annual Deductible - calculated based on individual */}
+                          <tr className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
+                              Family Annual Deductible
+                            </td>
+                            {standardPlans.map((plan) => {
+                              const individualDeductible = parseInt(selectedDeductibles[plan.id] || plan.defaultDeductible);
+                              const familyDeductible = individualDeductible * 3;
+                              return (
+                                <td
+                                  key={plan.id}
+                                  className={`p-3 text-center w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                                >
+                                  ${familyDeductible.toLocaleString()}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {/* Policy Co-payment - static values */}
+                          <tr className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
+                              Policy Co-payment
+                            </td>
+                            {["20%", "20%", "10%", "10%", "0%", "30%", "25%", "20%", "10%"].map((value, i) => (
+                              <td
+                                key={i}
+                                className={`p-3 text-center w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(standardPlans[i].id) ? "bg-red-50" : ""}`}
+                              >
+                                {value}
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
                       </table>
                     ),
                   },
@@ -375,7 +522,13 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "inpatient",
                     label: renderCollapsibleHeader("Inpatient and Day-care Treatment", "(Pre-authorization required)"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>{renderTableRows(inpatientData)}</tbody>
                       </table>
                     ),
@@ -384,10 +537,16 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                     key: "optional",
                     label: renderCollapsibleHeader("Optional Benefits"),
                     children: (
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full border-collapse text-sm table-fixed">
+                        <colgroup>
+                          <col className="w-[200px] min-w-[200px]" />
+                          {standardPlans.map((plan) => (
+                            <col key={plan.id} className="w-[130px] min-w-[130px]" />
+                          ))}
+                        </colgroup>
                         <tbody>
                           <tr className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 text-gray-700 sticky left-0 bg-white min-w-[200px]">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
                               <div className="flex items-center gap-3">
                                 <Switch
                                   size="small"
@@ -400,14 +559,14 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                             {standardPlans.map((plan, i) => (
                               <td
                                 key={i}
-                                className={`p-3 text-center text-gray-500 ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                                className={`p-3 text-center text-gray-500 w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
                               >
                                 {optionalBenefits.includes("maternity") ? "Included" : "Optional"}
                               </td>
                             ))}
                           </tr>
                           <tr className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 text-gray-700 sticky left-0 bg-white">
+                            <td className="p-3 text-gray-700 sticky left-0 bg-white w-[200px] min-w-[200px] max-w-[200px]">
                               <div className="flex items-center gap-3">
                                 <Switch
                                   size="small"
@@ -420,7 +579,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
                             {standardPlans.map((plan, i) => (
                               <td
                                 key={i}
-                                className={`p-3 text-center text-gray-500 ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
+                                className={`p-3 text-center text-gray-500 w-[130px] min-w-[130px] max-w-[130px] ${selectedPlans.includes(plan.id) ? "bg-red-50" : ""}`}
                               >
                                 {optionalBenefits.includes("dental") ? "Included" : "Optional"}
                               </td>
@@ -442,7 +601,7 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
             {standardPlans.map((plan) => (
               <td key={plan.id} className="p-3 text-center">
                 <div className="text-white">
-                  <span className="text-lg font-bold">${plan.premium.toLocaleString()}</span>
+                  <span className="text-lg font-bold">${calculatePremium(plan.id).toLocaleString()}</span>
                   <span className="text-xs text-white/70 block">/year</span>
                 </div>
               </td>
@@ -598,8 +757,56 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
             </button>
           </div>
 
+          {/* View Toggle for Standard Plans */}
+          {planType === "standard" && (
+            <div className="flex items-center justify-end gap-2 mb-6">
+              <span className="text-sm text-gray-500">View:</span>
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === "table"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <TableOutlined />
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode("cards")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === "cards"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <AppstoreOutlined />
+                  Cards
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Plan Content */}
-          {planType === "standard" ? renderComparisonTable() : renderCustomizedOptions()}
+          {planType === "standard" ? (
+            viewMode === "table" ? (
+              renderComparisonTable()
+            ) : (
+              <VerticalPlanCards
+                selectedPlans={cardSelectedPlans}
+                onPlanToggle={handleCardPlanToggle}
+                selectedRegions={cardSelectedRegions}
+                onRegionChange={handleCardRegionChange}
+                extraCoversState={cardExtraCovers}
+                onExtraCoverToggle={handleCardExtraCoverToggle}
+                selectedDeductibles={cardDeductibles}
+                onDeductibleChange={handleCardDeductibleChange}
+              />
+            )
+          ) : (
+            renderCustomizedOptions()
+          )}
         </div>
       </div>
 
