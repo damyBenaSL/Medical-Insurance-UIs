@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { Select, Switch, Checkbox, Collapse } from "antd";
-import { SafetyCertificateOutlined, CheckOutlined, DownOutlined } from "@ant-design/icons";
+import { SafetyCertificateOutlined, CheckOutlined, DownOutlined, TableOutlined, AppstoreOutlined } from "@ant-design/icons";
+import VerticalPlanCards from "./VerticalPlanCards";
 
 interface SelectPlanFormProps {
   onContinue: (planData: PlanData) => void;
@@ -174,11 +175,16 @@ const customizedCovers = [
 
 export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormProps) {
   const [planType, setPlanType] = useState<"standard" | "customized">("standard");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [geographicalCoverage, setGeographicalCoverage] = useState<Record<string, string>>({});
   const [selectedCovers, setSelectedCovers] = useState<string[]>([]);
   const [optionalBenefits, setOptionalBenefits] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<string[]>(["coverage", "deductible", "inpatient", "optional"]);
+  // State for vertical card view
+  const [cardSelectedPlans, setCardSelectedPlans] = useState<string[]>([]);
+  const [cardSelectedRegions, setCardSelectedRegions] = useState<Record<string, string>>({});
+  const [cardExtraCovers, setCardExtraCovers] = useState<Record<string, string[]>>({});
 
   const handlePlanToggle = (planId: string, checked: boolean) => {
     if (checked) {
@@ -212,6 +218,30 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
     } else {
       setOptionalBenefits((prev) => prev.filter((b) => b !== benefit));
     }
+  };
+
+  // Handlers for vertical card view
+  const handleCardPlanToggle = (planId: string, checked: boolean) => {
+    if (checked) {
+      setCardSelectedPlans((prev) => [...prev, planId]);
+    } else {
+      setCardSelectedPlans((prev) => prev.filter((id) => id !== planId));
+    }
+  };
+
+  const handleCardRegionChange = (planId: string, region: string) => {
+    setCardSelectedRegions((prev) => ({ ...prev, [planId]: region }));
+  };
+
+  const handleCardExtraCoverToggle = (planId: string, coverId: string, checked: boolean) => {
+    setCardExtraCovers((prev) => {
+      const current = prev[planId] || [];
+      if (checked) {
+        return { ...prev, [planId]: [...current, coverId] };
+      } else {
+        return { ...prev, [planId]: current.filter((id) => id !== coverId) };
+      }
+    });
   };
 
   const handleContinue = () => {
@@ -598,8 +628,54 @@ export default function SelectPlanForm({ onContinue, onBack }: SelectPlanFormPro
             </button>
           </div>
 
+          {/* View Toggle for Standard Plans */}
+          {planType === "standard" && (
+            <div className="flex items-center justify-end gap-2 mb-6">
+              <span className="text-sm text-gray-500">View:</span>
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === "table"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <TableOutlined />
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode("cards")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === "cards"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <AppstoreOutlined />
+                  Cards
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Plan Content */}
-          {planType === "standard" ? renderComparisonTable() : renderCustomizedOptions()}
+          {planType === "standard" ? (
+            viewMode === "table" ? (
+              renderComparisonTable()
+            ) : (
+              <VerticalPlanCards
+                selectedPlans={cardSelectedPlans}
+                onPlanToggle={handleCardPlanToggle}
+                selectedRegions={cardSelectedRegions}
+                onRegionChange={handleCardRegionChange}
+                extraCoversState={cardExtraCovers}
+                onExtraCoverToggle={handleCardExtraCoverToggle}
+              />
+            )
+          ) : (
+            renderCustomizedOptions()
+          )}
         </div>
       </div>
 
